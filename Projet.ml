@@ -79,11 +79,35 @@ let composition list =
       if hd 
         then loop tl (Int64.logor (Int64.shift_left accu 1) 1L) 0
         else loop tl (Int64.logor (Int64.shift_left accu 1) 0L) (cpt+1)
-    
-    
-
+  in loop (List.rev list) 0L 0;;
 
 let table x n = 
   let binary_list = decomposition [(Int64.of_int x)] in
   completion binary_list n;;
        
+let gen_alea n =
+  let rec loop acc n  = 
+    if (n <= 0) then List.rev acc
+    else
+    if (n < 64)
+    then loop (Random.int64 (Int64.shift_left 1L n)::acc) (n-64)
+    else loop (Random.int64 Int64.max_int::acc) (n-64)
+  in
+  loop [] n
+
+(*let gen_alea n =
+  
+   let l = n / 64 in
+   let bits = n - l * 64 in
+  
+   let rec loop l acc =
+     if l <= 0 then List.rev acc
+     else 
+       loop (l - 1) (Random.int64 Int64.max_int::acc)
+   in 
+  
+   if bits > 0 then
+     (loop l [])@[Random.int64 (Int64.shift_left 1L bits)]
+   else
+     loop l []*)
+
