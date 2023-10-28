@@ -85,15 +85,15 @@ let table x n =
   let binary_list = decomposition [(Int64.of_int x)] in
   completion binary_list n;;
        
-let gen_alea n =
-  let rec loop acc n  = 
-    if (n <= 0) then List.rev acc
-    else
-    if (n < 64)
-    then loop (Random.int64 (Int64.shift_left 1L n)::acc) (n-64)
-    else loop (Random.int64 Int64.max_int::acc) (n-64)
-  in
-  loop [] n
+  let gen_alea n =
+    let rec loop acc n  = 
+      if (n <= 0) then List.rev acc
+      else
+      if (n < 64)
+      then loop (Random.int64 (Int64.shift_left 1L n)::acc) (n-64) (* le dernier entier de n-l*64 bits *)
+      else loop (Random.int64 Int64.max_int::acc) (n-64) (* l entier de 64 bits *)
+    in
+    loop [] n
 
 (*let gen_alea n =
   
