@@ -123,8 +123,8 @@ let cons_arbre table =
     | [] -> failwith "Table de vérité vide"
     | [b] -> Leaf b
     | tab -> 
-        let left_table, right_table = diviser_liste (List.length tab/2) tab in
-        Node (depth, construction (depth+1) left_table, construction (depth+1) right_table)
+        let table_gauche, table_droite = diviser_liste (List.length tab/2) tab in
+        Node (depth, construction (depth+1) table_gauche, construction (depth+1) table_droite)
   in
   construction 1 table
 
@@ -132,4 +132,4 @@ let cons_arbre table =
 let rec liste_feuilles arbre = 
   match arbre with
   | Leaf b -> [b]
-  | Node (_, left, right) -> liste_feuilles left @ liste_feuilles right
+  | Node (_, gauche, droite) -> liste_feuilles gauche @ liste_feuilles droite
