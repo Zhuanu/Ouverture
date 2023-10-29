@@ -1,5 +1,6 @@
 open Int64
-    
+
+(*1.1*)
 module ListInt64 =
   
 struct
@@ -21,6 +22,7 @@ end ;;
 
 let rec bit64 n accu = if n <= 0 then accu else bit64 (n-1) (accu@[false]);;
 
+(*1.2*)
 let decomposition l = 
   let rec loop x list =
     if x = 0L then list 
@@ -38,7 +40,7 @@ let decomposition l =
   in
   loop2 l [];;
     
-  
+(*1.3*)
 let rec ajoutFalse list n accu =
   if (n <= 0)
   then list @ accu
@@ -63,6 +65,7 @@ let completion list n =
     match l with
     | [] -> accuElem::accuList
     | hd::tl -> 
+<<<<<<< HEAD
       if hd then 
         if cpt = 64
           then loop tl 0L 0 [0L]@accuList
@@ -95,9 +98,77 @@ let completion list n =
       List.iter (fun x -> Printf.printf "%b\n" x) lst
     ;;
 
+=======
+      if cpt = 0 
+        then loop tl (Int64.logor (Int64.shift_left accu 1) 1L) 0
+        else loop tl (Int64.logor (Int64.shift_left accu 1) 0L) (cpt-1)
+      if hd 
+        then loop tl (Int64.logor (Int64.shift_left accu 1) 1L) 0
+        else loop tl (Int64.logor (Int64.shift_left accu 1) 0L) (cpt+1)
+  in loop (List.rev list) 0L;; *)
+  
+(*1.4*)
+let composition list =
+  let rec loop l accu cpt = 
+    match l with
+    | [] -> accu
+    | hd::tl -> 
+      if hd 
+        then loop tl (Int64.logor (Int64.shift_left accu 1) 1L) 0
+        else loop tl (Int64.logor (Int64.shift_left accu 1) 0L) (cpt+1)
+  in loop (List.rev list) 0L 0;;
+>>>>>>> a29dc90bf8829ba862d71ed9b93414f59a7cdcee
 
+(*1.5*)
 let table x n = 
   let binary_list = decomposition [(Int64.of_int x)] in
   completion binary_list n;;
 
+<<<<<<< HEAD
        
+=======
+(*1.6*)
+let gen_alea n =
+  let rec loop acc n  = 
+    if (n <= 0) then List.rev acc
+    else
+    if (n < 64)
+    then loop (Random.int64 (Int64.shift_left 1L n)::acc) (n-64) (* le dernier entier de n-l*64 bits *)
+    else loop (Random.int64 Int64.max_int::acc) (n-64) (* l entier de 64 bits *)
+  in
+  loop [] n
+
+(*2.7*)
+type btree = 
+  | Leaf of bool
+  | Node of int * btree * btree
+
+(*2.8*)
+let diviser_liste taille_l1 liste =
+  let rec aux taille_l1 res liste = 
+    match liste with
+    | [] -> List.rev res, []
+    | x::y as l -> 
+        if taille_l1 = 0 
+        then List.rev res, l
+        else aux (taille_l1-1) (x::res) y  
+  in
+  aux taille_l1 [] liste
+
+let cons_arbre table = 
+  let rec construction depth table = 
+    match table with
+    | [] -> failwith "Table de vérité vide"
+    | [b] -> Leaf b
+    | tab -> 
+        let table_gauche, table_droite = diviser_liste (List.length tab/2) tab in
+        Node (depth, construction (depth+1) table_gauche, construction (depth+1) table_droite)
+  in
+  construction 1 table
+
+(*2.9*)
+let rec liste_feuilles arbre = 
+  match arbre with
+  | Leaf b -> [b]
+  | Node (_, gauche, droite) -> liste_feuilles gauche @ liste_feuilles droite
+>>>>>>> a29dc90bf8829ba862d71ed9b93414f59a7cdcee
