@@ -158,32 +158,97 @@ let findSeen liste x =
     in loop list
 
 
-
-  let compressionParListe tree seen =
-    let rec loop tree seen =
-      match tree with
-      | Leaf b -> 
-        let n = composition [b] in
-        let node = findSeen seen n in
-        (match node with
-        | None -> (n, ref tree)::seen
-        | Some node -> !node)
-      | Node (depth, gauche, droite) -> 
-          loop gauche seen;
-          loop droite seen;
-          let liste_gauche = liste_feuilles gauche in
+    (* version btree *)
+    (* let compressionParListe tree seen = 
+      let rec loop tree seen =
+        match !tree with
+        | Leaf b -> 
+          let n = composition [b] in (* Règle M *)
+          let node = findSeen !seen n in
+          (match node with
+            | None -> seen := (n, tree)::!seen
+            | Some node -> tree := !node);
+          !tree
+        | Node (depth, gauche, droite) ->
           let liste_droite = liste_feuilles droite in
-          let liste = liste_gauche @ liste_droite in
-          if (onlyFalse liste_droite)
-          then gauche
-          else 
-            let n = composition liste in
-            let node = findSeen seen n in
-            match node with
-            | None -> (n, ref tree)::seen
-            | Some node -> !node
-    in loop tree seen ;;
+          if (onlyFalse (liste_droite)) (* Règle Z *)
+          then (
+            let left = loop (ref gauche) seen in
+            tree := left; !tree)
+          else (
+            let left = loop (ref gauche) seen in
+            let right = loop (ref droite) seen in
+            let liste_gauche = liste_feuilles gauche in
+            let liste = liste_gauche @ liste_droite in
+            let n = composition liste in (* Règle M *)
+            let node = findSeen !seen n in
+            (match node with
+              | None -> seen := (n, tree)::!seen;
+              | Some node -> tree := !node);
+            tree := Node (depth, left, right); !tree)
+      in loop (ref tree) (ref seen) ;; *)
 
 
+      (* version Unit je sais pas si ça change tree directement *)
+      (* let compressionParListe tree seen = 
+        let rec loop tree seen =
+          match !tree with
+          | Leaf b -> 
+            let n = composition [b] in (* Règle M *)
+            let node = findSeen !seen n in
+            (match node with
+              | None -> seen := (n, tree)::!seen;
+              | Some node -> tree := !node)
+          | Node (depth, gauche, droite) ->
+            let liste_droite = liste_feuilles droite in
+            if (onlyFalse (liste_droite)) (* Règle Z *)
+            then (
+              loop (ref gauche) seen;
+              tree := gauche)
+            else (
+              loop (ref gauche) seen;
+              loop (ref droite) seen;
+              let liste_gauche = liste_feuilles gauche in
+              let liste = liste_gauche @ liste_droite in
+              let n = composition liste in (* Règle M *)
+              let node = findSeen !seen n in
+              (match node with
+                | None -> seen := (n, tree)::!seen;
+                | Some node -> tree := !node));
+        in loop (ref tree) (ref seen) ;; *)
+      
+      let rec write_node oc node =
+        match node with
+        | Leaf b ->
+          let node_name = string_of_bool b in
+          Printf.fprintf oc "%s [label=\"%s\"];\n" node_name node_name
+        | Node (i, left, right) ->
+          let node_name = "Node_" ^ string_of_int i in
+          Printf.fprintf oc "%s [label=\"%s\"];\n" node_name node_name;
+          write_edge oc node_name left "left";
+          write_edge oc node_name right "right";
+          write_node oc left;
+          write_node oc right
+      
+      and write_edge oc parent child edge_label =
+        match child with
+        | Leaf b ->
+          let child_name = "Leaf_" ^ string_of_bool b in
+          Printf.fprintf oc "%s -> %s [label=\"%s\"];\n" parent child_name edge_label
+        | Node (i, _, _) ->
+          let child_name = "Node_" ^ string_of_int i in
+          Printf.fprintf oc "%s -> %s [label=\"%s\"];\n" parent child_name edge_label
+      
+      let generate_dot_file tree filename =
+        let oc = open_out filename in
+        Printf.fprintf oc "digraph G {\n";
+        write_node oc tree;
+        Printf.fprintf oc "}\n";
+        close_out oc
 
-
+      let dot = 
+        let tree = cons_arbre (List.rev [true; false; false; false]) in
+        generate_dot_file tree "binary_file.dot";;
+      
+      
+      dot;;
