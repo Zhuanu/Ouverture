@@ -60,25 +60,12 @@ let completion list n =
   else suppElem list n [];;
 
 
-(* let composition list = 
-  let rec loop l accuElem cpt accuList =
-    match l with
-    | [] -> accuElem::accuList
-    | hd::tl -> 
-<<<<<<< HEAD
-      if hd then 
-        if cpt = 64
-          then loop tl 0L 0 [0L]@accuList
-          else loop tl (Int64.logor (Int64.shift_left accuElem 1) 1L) 0 accuList
-      else loop tl (Int64.logor (Int64.shift_left accuElem 1) 0L) (cpt+1) accuList
-  in loop list 0L 0 [];; *)
-
   let package list = 
     let rec loop l =
       let (hd, tl) = completion l 64 in
       match tl with
-      | [] -> [hd]
-      | _ -> hd::(loop tl)
+      | [] -> [(List.rev hd)]
+      | _ -> (List.rev hd)::(loop tl)
     in loop list;;
 
   let composition list =
@@ -88,45 +75,18 @@ let completion list n =
       | hd::tl -> 
         let rec loopInt l accu =
           match l with
-          | [] -> accu
+          | [] -> Int64.of_int (Int64.to_int accu)
           | hd::tl -> 
             loopInt tl (Int64.logor (Int64.shift_left accu 1) (if hd then 1L else 0L))
-        in loopInt (List.rev hd) 0L :: loopExt tl
+        in loopInt hd 0L :: loopExt tl
     in loopExt (package list);;
 
-    let print_list lst =
-      List.iter (fun x -> Printf.printf "%b\n" x) lst
-    ;;
-
-=======
-      if cpt = 0 
-        then loop tl (Int64.logor (Int64.shift_left accu 1) 1L) 0
-        else loop tl (Int64.logor (Int64.shift_left accu 1) 0L) (cpt-1)
-      if hd 
-        then loop tl (Int64.logor (Int64.shift_left accu 1) 1L) 0
-        else loop tl (Int64.logor (Int64.shift_left accu 1) 0L) (cpt+1)
-  in loop (List.rev list) 0L;; *)
-  
-(*1.4*)
-let composition list =
-  let rec loop l accu cpt = 
-    match l with
-    | [] -> accu
-    | hd::tl -> 
-      if hd 
-        then loop tl (Int64.logor (Int64.shift_left accu 1) 1L) 0
-        else loop tl (Int64.logor (Int64.shift_left accu 1) 0L) (cpt+1)
-  in loop (List.rev list) 0L 0;;
->>>>>>> a29dc90bf8829ba862d71ed9b93414f59a7cdcee
 
 (*1.5*)
 let table x n = 
-  let binary_list = decomposition [(Int64.of_int x)] in
+  let binary_list = decomposition x in
   completion binary_list n;;
 
-<<<<<<< HEAD
-       
-=======
 (*1.6*)
 let gen_alea n =
   let rec loop acc n  = 
@@ -171,4 +131,59 @@ let rec liste_feuilles arbre =
   match arbre with
   | Leaf b -> [b]
   | Node (_, gauche, droite) -> liste_feuilles gauche @ liste_feuilles droite
->>>>>>> a29dc90bf8829ba862d71ed9b93414f59a7cdcee
+
+
+(*3.10*)
+
+type dejaVus = int64 list * btree ref;;
+type listeDejaVus = dejaVus list;;
+
+let findSeen liste x =
+  let rec aux liste x =
+    match liste with
+    | [] -> None
+    | (nombre, pointeur)::q -> 
+      let egaux = List.compare (fun a b -> Int64.unsigned_compare a b) nombre x in
+        if egaux = 0
+          then Some pointeur
+          else aux q x
+  in
+  aux liste x
+
+  let onlyFalse list =
+    let rec loop list =
+      match list with
+      | [] -> true
+      | hd::tl -> if hd then false else loop tl
+    in loop list
+
+
+
+  let compressionParListe tree seen =
+    let rec loop tree seen =
+      match tree with
+      | Leaf b -> 
+        let n = composition [b] in
+        let node = findSeen seen n in
+        (match node with
+        | None -> (n, ref tree)::seen
+        | Some node -> !node)
+      | Node (depth, gauche, droite) -> 
+          loop gauche seen;
+          loop droite seen;
+          let liste_gauche = liste_feuilles gauche in
+          let liste_droite = liste_feuilles droite in
+          let liste = liste_gauche @ liste_droite in
+          if (onlyFalse liste_droite)
+          then gauche
+          else 
+            let n = composition liste in
+            let node = findSeen seen n in
+            match node with
+            | None -> (n, ref tree)::seen
+            | Some node -> !node
+    in loop tree seen ;;
+
+
+
+
