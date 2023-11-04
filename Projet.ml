@@ -105,13 +105,13 @@ type btree =
 
 (*2.8*)
 let diviser_liste taille_l1 liste =
-  let rec aux taille_l1 res liste = 
-    match liste with
-    | [] -> List.rev res, []
+  let rec aux taille_l1 l1 l2 = 
+    match l2 with
+    | [] -> List.rev l1, []
     | x::y as l -> 
         if taille_l1 = 0 
-        then List.rev res, l
-        else aux (taille_l1-1) (x::res) y  
+        then List.rev l1, l
+        else aux (taille_l1-1) (x::l1) y  
   in
   aux taille_l1 [] liste
 
