@@ -104,16 +104,16 @@ type btree =
   | Node of int * btree * btree
 
 (*2.8*)
-let diviser_liste taille_l1 liste =
-  let rec aux taille_l1 l1 l2 = 
+let diviser_liste liste =
+  let rec aux taille l1 l2 = 
     match l2 with
     | [] -> List.rev l1, []
     | x::y as l -> 
-        if taille_l1 = 0 
+        if taille = 0 
         then List.rev l1, l
-        else aux (taille_l1-1) (x::l1) y  
+        else aux (taille-1) (x::l1) y  
   in
-  aux taille_l1 [] liste
+  aux (List.length liste/2) [] liste
 
 let cons_arbre table = 
   let rec construction depth table = 
@@ -121,8 +121,8 @@ let cons_arbre table =
     | [] -> failwith "Table de vérité vide"
     | [b] -> Leaf b
     | tab -> 
-        let table_gauche, table_droite = diviser_liste (List.length tab/2) tab in
-        Node (depth, construction (depth+1) table_gauche, construction (depth+1) table_droite)
+        let left_table, right_table = diviser_liste tab in
+        Node (depth, construction (depth+1) left_table, construction (depth+1) right_table)
   in
   construction 1 table
 
