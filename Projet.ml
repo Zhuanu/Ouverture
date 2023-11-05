@@ -2,7 +2,6 @@ open Int64
 
 (*1.1*)
 module ListInt64 =
-  
 struct
   type 'a t  = 'a list ref
       
@@ -60,26 +59,26 @@ let completion list n =
   else suppElem list n [];;
 
 
-  let package list = 
-    let rec loop l =
-      let (hd, tl) = completion l 64 in
-      match tl with
-      | [] -> [(List.rev hd)]
-      | _ -> (List.rev hd)::(loop tl)
-    in loop list;;
+let package list = 
+  let rec loop l =
+    let (hd, tl) = completion l 64 in
+    match tl with
+    | [] -> [(List.rev hd)]
+    | _ -> (List.rev hd)::(loop tl)
+  in loop list;;
 
-  let composition list =
-    let rec loopExt l =
-      match l with
-      | [] -> []
-      | hd::tl -> 
-        let rec loopInt l accu =
-          match l with
-          | [] -> Int64.of_int (Int64.to_int accu)
-          | hd::tl -> 
-            loopInt tl (Int64.logor (Int64.shift_left accu 1) (if hd then 1L else 0L))
-        in loopInt hd 0L :: loopExt tl
-    in loopExt (package list);;
+let composition list =
+  let rec loopExt l =
+    match l with
+    | [] -> []
+    | hd::tl -> 
+      let rec loopInt l accu =
+        match l with
+        | [] -> Int64.of_int (Int64.to_int accu)
+        | hd::tl -> 
+          loopInt tl (Int64.logor (Int64.shift_left accu 1) (if hd then 1L else 0L))
+      in loopInt hd 0L :: loopExt tl
+  in loopExt (package list);;
 
 
 (*1.5*)
@@ -150,105 +149,83 @@ let findSeen liste x =
   in
   aux liste x
 
-  let onlyFalse list =
-    let rec loop list =
-      match list with
-      | [] -> true
-      | hd::tl -> if hd then false else loop tl
-    in loop list
+let onlyFalse list =
+  let rec loop list =
+    match list with
+    | [] -> true
+    | hd::tl -> if hd then false else loop tl
+  in loop list
 
+let regleM tree seen liste =
+  let n = composition liste in (* Règle M *)
+  let node = findSeen !seen n in
+  (match node with
+    | None -> seen := (n, tree)::!seen
+    | Some node -> tree := !node);;
 
-    (* version btree *)
-    (* let compressionParListe tree seen = 
-      let rec loop tree seen =
-        match !tree with
-        | Leaf b -> 
-          let n = composition [b] in (* Règle M *)
-          let node = findSeen !seen n in
-          (match node with
-            | None -> seen := (n, tree)::!seen
-            | Some node -> tree := !node);
-          !tree
-        | Node (depth, gauche, droite) ->
-          let liste_droite = liste_feuilles droite in
-          if (onlyFalse (liste_droite)) (* Règle Z *)
+  (* version Unit *)
+  let compressionParListe tree listseen = 
+    let rec loop tree listseen =
+      match !tree with
+      | Leaf b -> regleM tree listseen [b]
+      | Node (depth, left, right) ->
+        let liste = liste_feuilles (!tree) in
+        let liste_droite = liste_feuilles right in
+        if (onlyFalse (liste_droite)) (* Règle Z *)
           then (
-            let left = loop (ref gauche) seen in
-            tree := left; !tree)
+            loop (ref left) listseen;
+            tree := left
+          )
           else (
-            let left = loop (ref gauche) seen in
-            let right = loop (ref droite) seen in
-            let liste_gauche = liste_feuilles gauche in
-            let liste = liste_gauche @ liste_droite in
-            let n = composition liste in (* Règle M *)
-            let node = findSeen !seen n in
-            (match node with
-              | None -> seen := (n, tree)::!seen;
-              | Some node -> tree := !node);
-            tree := Node (depth, left, right); !tree)
-      in loop (ref tree) (ref seen) ;; *)
+            loop (ref left) listseen;
+            loop (ref right) listseen;
+            regleM tree listseen liste;
+          )
+    in loop (ref tree) (ref listseen);
+    print_int (List.length listseen); print_newline ();
+  ;;
 
 
-      (* version Unit je sais pas si ça change tree directement *)
-      (* let compressionParListe tree seen = 
-        let rec loop tree seen =
-          match !tree with
-          | Leaf b -> 
-            let n = composition [b] in (* Règle M *)
-            let node = findSeen !seen n in
-            (match node with
-              | None -> seen := (n, tree)::!seen;
-              | Some node -> tree := !node)
-          | Node (depth, gauche, droite) ->
-            let liste_droite = liste_feuilles droite in
-            if (onlyFalse (liste_droite)) (* Règle Z *)
-            then (
-              loop (ref gauche) seen;
-              tree := gauche)
-            else (
-              loop (ref gauche) seen;
-              loop (ref droite) seen;
-              let liste_gauche = liste_feuilles gauche in
-              let liste = liste_gauche @ liste_droite in
-              let n = composition liste in (* Règle M *)
-              let node = findSeen !seen n in
-              (match node with
-                | None -> seen := (n, tree)::!seen;
-                | Some node -> tree := !node));
-        in loop (ref tree) (ref seen) ;; *)
-      
-      let rec write_node oc node =
+      let table = (table [4L] 8) in
+      let (table_verite, _) = table in
+      let arbre = cons_arbre table_verite in 
+      let seen = [] in
+      let arbre_comp = compressionParListe arbre seen in
+      print_int (List.length seen); print_newline ();
+
+(* let dot_arbre arbre =
+    let buffer = ref "" in
+    let counter = ref 0 in
+    let rec aux_dot_arbre node =
+        let node_id = !counter in
+        counter := node_id + 1;
+        let nodelabel = match node with
+          | Node (depth, _, _) -> string_of_int depth
+          | Leaf true -> "True"
+          | Leaf false -> "False"
+        in
+        buffer := Printf.sprintf "%d [label=\"%s\"];\n" node_id nodelabel ^ !buffer;
         match node with
-        | Leaf b ->
-          let node_name = string_of_bool b in
-          Printf.fprintf oc "%s [label=\"%s\"];\n" node_name node_name
-        | Node (i, left, right) ->
-          let node_name = "Node_" ^ string_of_int i in
-          Printf.fprintf oc "%s [label=\"%s\"];\n" node_name node_name;
-          write_edge oc node_name left "left";
-          write_edge oc node_name right "right";
-          write_node oc left;
-          write_node oc right
-      
-      and write_edge oc parent child edge_label =
-        match child with
-        | Leaf b ->
-          let child_name = "Leaf_" ^ string_of_bool b in
-          Printf.fprintf oc "%s -> %s [label=\"%s\"];\n" parent child_name edge_label
-        | Node (i, _, _) ->
-          let child_name = "Node_" ^ string_of_int i in
-          Printf.fprintf oc "%s -> %s [label=\"%s\"];\n" parent child_name edge_label
-      
-      let generate_dot_file tree filename =
-        let oc = open_out filename in
-        Printf.fprintf oc "digraph G {\n";
-        write_node oc tree;
-        Printf.fprintf oc "}\n";
-        close_out oc
-
-      let dot = 
-        let tree = cons_arbre (List.rev [true; false; false; false]) in
-        generate_dot_file tree "binary_file.dot";;
-      
-      
-      dot;;
+        | Node (_, gauche, droite) ->
+          let left_child_id = !counter in
+          aux_dot_arbre gauche;
+          let right_child_id = !counter in
+          aux_dot_arbre droite;
+          buffer := Printf.sprintf "%d -> %d ;\n" node_id right_child_id ^ !buffer;
+          buffer := Printf.sprintf "%d -> %d[style=dotted];\n" node_id left_child_id ^ !buffer;
+        | _ -> ()
+    in
+    aux_dot_arbre arbre;
+    "digraph ArbreDecision {\n" ^ !buffer ^ "}\n"
+    let table = table [4L] 16
+    let (table_verite, _) = table
+    let arbre = cons_arbre table_verite
+    let arbre_comp = compressionParListe arbre []
+    let () =
+      (* let dot_output_comp = dot_arbre arbre_comp in
+      let dot_file = open_out "arbre_decision_comp.dot" in
+      Printf.fprintf dot_file "%s" dot_output_comp; *)
+      let dot_output = dot_arbre arbre in
+      let dot_file = open_out "arbre_decision.dot" in
+      Printf.fprintf dot_file "%s" dot_output;
+      close_out dot_file *)
