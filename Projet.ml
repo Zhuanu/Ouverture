@@ -25,10 +25,10 @@ let rec bit64 n accu = if n <= 0 then accu else bit64 (n-1) (accu@[false]);;
 (*1.2*)
 let decomposition l = 
   let rec loop x list =
-    if x = 0L then list 
+    if x = 0L then List.rev list 
     else if (Int64.unsigned_rem x 2L = 1L)
-    then loop (Int64.unsigned_div x 2L) (list@[true])
-    else loop (Int64.unsigned_div x 2L) (list@[false])
+    then loop (Int64.unsigned_div x 2L) (true::list)
+    else loop (Int64.unsigned_div x 2L) (false::list)
   in
   let rec loop2 l list = 
     match l with 
