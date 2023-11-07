@@ -158,64 +158,34 @@ let findSeen liste x =
     in loop list
 
 
-    (* version btree *)
-    (* let compressionParListe tree seen = 
-      let rec loop tree seen =
-        match !tree with
-        | Leaf b -> 
-          let n = composition [b] in (* Règle M *)
-          let node = findSeen !seen n in
-          (match node with
-            | None -> seen := (n, tree)::!seen
-            | Some node -> tree := !node);
-          !tree
-        | Node (depth, gauche, droite) ->
-          let liste_droite = liste_feuilles droite in
-          if (onlyFalse (liste_droite)) (* Règle Z *)
+let regleM tree seen liste =
+  let n = composition liste in (* Règle M *)
+  let node = findSeen !seen n in
+  (match node with
+    | None -> seen := (n, tree)::!seen
+    | Some node -> tree := !node);;
+
+  (* version Unit *)
+  let compressionParListe tree listseen = 
+    let rec loop tree listseen =
+      match !tree with
+      | Leaf b -> regleM tree listseen [b]
+      | Node (depth, left, right) ->
+        let liste = liste_feuilles (!tree) in
+        let liste_droite = liste_feuilles right in
+        if (onlyFalse (liste_droite)) (* Règle Z *)
           then (
-            let left = loop (ref gauche) seen in
-            tree := left; !tree)
+            loop (ref left) listseen;
+            tree := left
+          )
           else (
-            let left = loop (ref gauche) seen in
-            let right = loop (ref droite) seen in
-            let liste_gauche = liste_feuilles gauche in
-            let liste = liste_gauche @ liste_droite in
-            let n = composition liste in (* Règle M *)
-            let node = findSeen !seen n in
-            (match node with
-              | None -> seen := (n, tree)::!seen;
-              | Some node -> tree := !node);
-            tree := Node (depth, left, right); !tree)
-      in loop (ref tree) (ref seen) ;; *)
-
-
-      (* version Unit je sais pas si ça change tree directement *)
-      (* let compressionParListe tree seen = 
-        let rec loop tree seen =
-          match !tree with
-          | Leaf b -> 
-            let n = composition [b] in (* Règle M *)
-            let node = findSeen !seen n in
-            (match node with
-              | None -> seen := (n, tree)::!seen;
-              | Some node -> tree := !node)
-          | Node (depth, gauche, droite) ->
-            let liste_droite = liste_feuilles droite in
-            if (onlyFalse (liste_droite)) (* Règle Z *)
-            then (
-              loop (ref gauche) seen;
-              tree := gauche)
-            else (
-              loop (ref gauche) seen;
-              loop (ref droite) seen;
-              let liste_gauche = liste_feuilles gauche in
-              let liste = liste_gauche @ liste_droite in
-              let n = composition liste in (* Règle M *)
-              let node = findSeen !seen n in
-              (match node with
-                | None -> seen := (n, tree)::!seen;
-                | Some node -> tree := !node));
-        in loop (ref tree) (ref seen) ;; *)
+            loop (ref left) listseen;
+            loop (ref right) listseen;
+            regleM tree listseen liste;
+          )
+    in loop (ref tree) (ref listseen);
+    print_int (List.length listseen); print_newline ();
+  ;;
       
       let rec write_node oc node =
         match node with
