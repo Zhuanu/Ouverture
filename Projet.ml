@@ -126,8 +126,8 @@ let cons_arbre table =
   construction 1 table
 
 (*2.9*)
-let rec liste_feuilles N = 
-  match N with
+let rec liste_feuilles n = 
+  match n with
   | Leaf b -> [b]
   | Node (_, gauche, droite) -> liste_feuilles gauche @ liste_feuilles droite
 
