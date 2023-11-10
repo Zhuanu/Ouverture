@@ -19,9 +19,9 @@ struct
   let length list = List.length !list  
 end ;;
 
+(*1.2*)
 let rec bit64 n accu = if n <= 0 then accu else bit64 (n-1) (accu@[false]);;
 
-(*1.2*)
 let decomposition l = 
   let rec loop x list =
     if x = 0L then list 
@@ -137,17 +137,16 @@ let rec liste_feuilles arbre =
 type dejaVus = int64 list * btree ref;;
 type listeDejaVus = dejaVus list;;
 
-let findSeen liste x =
-  let rec aux liste x =
-    match liste with
+let findSeen seen x =
+  let rec aux seen x =
+    match !seen with
     | [] -> None
-    | (nombre, pointeur)::q -> 
+    | (nombre, pointeur)::reste -> 
       let egaux = List.compare (fun a b -> Int64.unsigned_compare a b) nombre x in
         if egaux = 0
           then Some pointeur
-          else aux q x
-  in
-  aux liste x
+          else aux (ref reste) x
+  in aux seen x
 
 let onlyFalse list =
   let rec loop list =
@@ -156,76 +155,86 @@ let onlyFalse list =
     | hd::tl -> if hd then false else loop tl
   in loop list
 
-let regleM tree seen liste =
-  let n = composition liste in (* Règle M *)
-  let node = findSeen !seen n in
+(* let regleM tree seen liste =
+  let n = composition liste in
+  let node = findSeen seen n in
   (match node with
     | None -> seen := (n, tree)::!seen
-    | Some node -> tree := !node);;
+    | Some node -> tree := !node);; *)
+    let regleM tree seen liste =
+      let n = composition liste in
+      let node = findSeen seen n in
+      (match node with
+        | None -> print_string "None\n" ; seen := (n, tree)::!seen
+        | Some node -> print_string "Some\n");;
 
-  (* version Unit *)
-  let compressionParListe tree listseen = 
-    let rec loop tree listseen =
-      match !tree with
-      | Leaf b -> regleM tree listseen [b]
-      | Node (depth, left, right) ->
-        let liste = liste_feuilles (!tree) in
-        let liste_droite = liste_feuilles right in
-        if (onlyFalse (liste_droite)) (* Règle Z *)
-          then (
-            loop (ref left) listseen;
-            tree := left
-          )
-          else (
-            loop (ref left) listseen;
-            loop (ref right) listseen;
-            regleM tree listseen liste;
-          )
-    in loop (ref tree) (ref listseen);
-    print_int (List.length listseen); print_newline ();
-  ;;
+(* version Unit *)
+let compressionParListe tree listseen = 
+  let rec loop tree listseen =
+    match !tree with
+    | Leaf b -> regleM tree listseen [b]
+    | Node (depth, left, right) ->
+      let gauche = (ref left) in
+      let droite = (ref right) in
+      let liste = liste_feuilles (!tree) in
+      let liste_droite = liste_feuilles right in
+      if (onlyFalse (liste_droite)) (* Règle Z *)
+      then (
+        loop gauche listseen;
+        tree := !gauche;
+      )
+      else (
+        loop gauche listseen;
+        loop droite listseen;
+        regleM tree listseen liste;
+      );
+      Printf.printf "Taille de seen %d\n" (List.length !listseen);
+  in loop tree listseen;;
 
 
-      let table = (table [4L] 8) in
-      let (table_verite, _) = table in
-      let arbre = cons_arbre table_verite in 
-      let seen = [] in
-      let arbre_comp = compressionParListe arbre seen in
-      print_int (List.length seen); print_newline ();
+let nodeGraph arbre buffer = 
+  let cpt = ref 0 in
+  let rec loop node cpt buffer = 
+    match !node with
+    | Leaf b -> 
+      buffer := !buffer ^ (Printf.sprintf "%d [label=\"%s\"];\n" !cpt (if b then "True" else "False"))
+    | Node (prof, gauche, droite) -> 
+      buffer := !buffer ^ (Printf.sprintf "%d [label=\"%d\"];\n" !cpt prof);
+      cpt := !cpt + 1;
+      loop (ref gauche) cpt buffer;
+      cpt := !cpt + 1;
+      loop (ref droite) cpt buffer;
+  in loop arbre cpt buffer;;
 
-(* let dot_arbre arbre =
-    let buffer = ref "" in
-    let counter = ref 0 in
-    let rec aux_dot_arbre node =
-        let node_id = !counter in
-        counter := node_id + 1;
-        let nodelabel = match node with
-          | Node (depth, _, _) -> string_of_int depth
-          | Leaf true -> "True"
-          | Leaf false -> "False"
-        in
-        buffer := Printf.sprintf "%d [label=\"%s\"];\n" node_id nodelabel ^ !buffer;
-        match node with
-        | Node (_, gauche, droite) ->
-          let left_child_id = !counter in
-          aux_dot_arbre gauche;
-          let right_child_id = !counter in
-          aux_dot_arbre droite;
-          buffer := Printf.sprintf "%d -> %d ;\n" node_id right_child_id ^ !buffer;
-          buffer := Printf.sprintf "%d -> %d[style=dotted];\n" node_id left_child_id ^ !buffer;
-        | _ -> ()
-    in
-    aux_dot_arbre arbre;
-    "digraph ArbreDecision {\n" ^ !buffer ^ "}\n"
-    let table = table [4L] 16
-    let (table_verite, _) = table
-    let arbre = cons_arbre table_verite
-    let arbre_comp = compressionParListe arbre []
-    let () =
-      (* let dot_output_comp = dot_arbre arbre_comp in
-      let dot_file = open_out "arbre_decision_comp.dot" in
-      Printf.fprintf dot_file "%s" dot_output_comp; *)
-      let dot_output = dot_arbre arbre in
-      let dot_file = open_out "arbre_decision.dot" in
-      Printf.fprintf dot_file "%s" dot_output;
-      close_out dot_file *)
+
+let edgeGraph arbre buffer =
+  let cpt = ref 0 in
+  let rec loop node cpt buffer =
+    let id = !cpt in
+    match !node with
+    | Leaf b -> ()
+    | Node (prof, gauche, droite) -> 
+      cpt := !cpt + 1;
+      buffer := !buffer ^ (Printf.sprintf "%d -> %d [style=\"dotted\"];\n" id !cpt);
+      loop (ref gauche) cpt buffer;
+      cpt := !cpt + 1;
+      buffer := !buffer ^ (Printf.sprintf "%d -> %d;\n" id !cpt);
+      loop (ref droite) cpt buffer;
+  in loop arbre cpt buffer;;
+
+
+let graph l n =
+  let buffer = ref "digraph ArbreDecision {\n" in
+  let (table, _) = (table l n) in
+  let arbre = ref (cons_arbre table) in
+  let seen = ref [] in
+  compressionParListe arbre seen;
+  nodeGraph arbre buffer;
+  edgeGraph arbre buffer;
+  buffer := !buffer ^ "}";
+  (* print_string !buffer;; *)
+  let dot_file = open_out "arbre_decision.dot" in
+  Printf.fprintf dot_file "%s" !buffer;
+  close_out dot_file;;
+
+let () = graph [8L] 4;;
