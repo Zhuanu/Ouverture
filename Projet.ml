@@ -291,9 +291,63 @@ let () = graph [25899L] 16;;
 
 (*4.15*)
 type arbreDejaVus =
-| Leaf
-| Node of btree option * (arbreDejaVus ref) * (arbreDejaVus ref) (* pointeur vers noeud du graphe, false : arbreG, true : arbreD *)
+| Leaf_
+| Node_ of btree option * (arbreDejaVus ref) * (arbreDejaVus ref) (* pointeur vers noeud du graphe, false : arbreG, true : arbreD *)
 
+(* let extendLeaf node bits =
+  let rec loop node bits =
+    match bits with 
+    | [] -> Node (Some node, ref Leaf, ref Leaf)
+    | true::xs -> Node (None, ref Leaf, loop node xs)
+    | false::xs -> Node (None, loop node xs, ref Leaf)
+  in loop node bits;; *)
+
+
+let insertionArbre arbre bits node =
+  let rec loop arbre bits =
+    match !arbre, bits with
+    | Leaf_, [] -> ref (Node_ (Some node, ref Leaf_, ref Leaf_))
+    | Leaf_, true::xs -> ref (Node_ (None, ref Leaf_, loop (ref Leaf_) xs))
+    | Leaf_, false::xs -> ref (Node_ (None, loop (ref Leaf_) xs, ref Leaf_))
+    | Node_ (_, gauche, droite), [] -> ref (Node_ (Some node, gauche, droite)) (* forcement None sinon on ferait pas d'insertion *)
+    | Node_ (pointeur, gauche, droite), true::xs -> ref (Node_ (pointeur, gauche, loop droite xs))
+    | Node_ (pointeur, gauche, droite), false::xs -> ref (Node_ (pointeur, loop gauche xs, droite))
+  in loop arbre bits
+
+
+let findSeenArbre seenArbre bits =
+  let rec loop seenArbre bits =
+    match !seenArbre, bits with
+    | Leaf_, _ -> None
+    | Node_ (pointeur, _, _), [] -> Some pointeur
+    | Node_ (_, gauche, droite), true::xs -> loop droite xs
+    | Node_ (_, gauche, droite), false::xs -> loop gauche xs
+  in loop seenArbre bits
+
+
+let regleM_Arbre tree seenArbre liste =
+  let node = findSeenArbre seenArbre liste in
+  match node with
+    | None -> seenArbre := !(insertionArbre seenArbre liste tree); Some tree
+    | Some a -> a
+
+
+let compressionParArbre tree seenArbre =
+  let rec loop tree seenArbre =
+    match tree with
+    | Leaf b -> regleM_Arbre tree seenArbre [b]
+    | Node (depth, left, right) ->
+      let liste = liste_feuilles tree in
+      let liste_droite = liste_feuilles right in
+      if (onlyFalse (liste_droite))
+      then ( (* Règle Z *)
+        loop left seenArbre;
+      )
+      else (
+        let newTree = Node (depth, loop left seenArbre, loop right seenArbre) in
+        regleM_Arbre newTree seenArbre liste
+      );
+  in loop tree seenArbre;;
 
 
 (*4.16*)
@@ -301,18 +355,7 @@ type arbreDejaVus =
    b : feuille de l'arbre ArbreDejaVus
    bits : liste de bits*)
 (*Etend l'arbre avec la liste de bits x*)
-let extendLeaf tree b bits =
-  let aux tree bits =
-    match bits with
-    | [] -> Node (Some tree, ref Leaf, ref Leaf)
-    | x1::rest ->
-      if x1 then Node (None, None, ref (aux tree rest))
-      else Node (None, ref (aux tree rest), Leaf None) (*on étend l'arbre, en mettant des pointeurs nuls*)
-  in 
-  match bits with
-  | x1::rest -> 
-    if x1 then b := Node (b, Leaf None, ref (aux tree rest))
-    else b := Node (b, ref (aux tree rest), Leaf None)
+
     
 (* 
 let findSeen2 tree treeSeen x =
