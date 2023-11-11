@@ -262,9 +262,20 @@ let edgeGraph arbre buffer =
 
 
 let graph l n =
-  let buffer = ref "digraph ArbreDecision {\n" in
   let (table, _) = (table l n) in
   let arbre = cons_arbre table in
+
+  (* Arbre non compressé *)
+  let buffer2 = ref "digraph ArbreDecision {\n" in
+  nodeGraph arbre buffer2;
+  edgeGraph arbre buffer2;
+  buffer2 := !buffer2 ^ "}";
+  let dot_file = open_out "Figure 1.dot" in
+  Printf.fprintf dot_file "%s" !buffer2;
+  close_out dot_file;
+
+  (* Arbre compressé *)
+  let buffer = ref "digraph ArbreDecision {\n" in
   let seen = ref [] in
   let arbre_comp = compressionParListe arbre seen in 
   nodeGraph arbre_comp buffer;
