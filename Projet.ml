@@ -286,3 +286,59 @@ let graph l n =
   close_out dot_file;;
 
 let () = graph [25899L] 16;;
+
+
+
+(*4.15*)
+type arbreDejaVus =
+| Leaf
+| Node of btree option * (arbreDejaVus ref) * (arbreDejaVus ref) (* pointeur vers noeud du graphe, false : arbreG, true : arbreD *)
+
+
+
+(*4.16*)
+(*Entrée :
+   b : feuille de l'arbre ArbreDejaVus
+   bits : liste de bits*)
+(*Etend l'arbre avec la liste de bits x*)
+let extendLeaf tree b bits =
+  let aux tree bits =
+    match bits with
+    | [] -> Node (Some tree, ref Leaf, ref Leaf)
+    | x1::rest ->
+      if x1 then Node (None, None, ref (aux tree rest))
+      else Node (None, ref (aux tree rest), Leaf None) (*on étend l'arbre, en mettant des pointeurs nuls*)
+  in 
+  match bits with
+  | x1::rest -> 
+    if x1 then b := Node (b, Leaf None, ref (aux tree rest))
+    else b := Node (b, ref (aux tree rest), Leaf None)
+    
+(* 
+let findSeen2 tree treeSeen x =
+(*Entrée :
+   treeSeen : ArbreDejaVus
+   x : liste de bits*)
+(*Parcours l'arbre treeSeen afin de déterminer si x a déjà été vu, renvoie l'arbre avec le pointeur ajouté (s'il n'y était pas déjà)*)
+let rec aux treeSeen x =
+  match treeSeen, x with
+  | Leaf b, [] -> Some b (*si liste vide et on tombe sur une feuille*)
+  | Leaf b, x1::xs ->  (*si liste non vide et on tombe sur une feuille, on étend l'arbre*)
+      extendLeaf tree b x
+  | Node (pointeur, gauche, droite), [] -> (*si liste vide, dans un noeud interne de l'arbre*)
+    if !pointeur = None
+      then (pointeur := Some (Leaf false); Some (Leaf false)) (*change le pointeur de l'arbre si pointeur vide*)
+      else Some !pointeur (*renvoie le pointeur de l'arbre si pointeur non vide*)
+  | Node (pointeur, gauche, droite), x1::xs -> 
+    if x1 = false
+      then aux !gauche xs
+      else aux !droite xs
+in
+aux treeSeen x
+
+let regleM2 tree treeSeen liste =
+let node = findSeen2 tree !treeSeen liste in
+match node with
+  | None -> tree
+  | Some node -> !node
+ *)
