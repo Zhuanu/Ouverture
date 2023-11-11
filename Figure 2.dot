@@ -4,11 +4,11 @@ digraph ArbreDecision {
 2 [label="3"];
 3 [label="4"];
 4 [label="True"];
-6 [label="4"];
-7 [label="False"];
-10 [label="2"];
-11 [label="3"];
-14 [label="3"];
+5 [label="4"];
+6 [label="False"];
+7 [label="2"];
+8 [label="3"];
+9 [label="3"];
 0 -> 1 [style="dotted"];
 1 -> 2 [style="dotted"];
 2 -> 3 [style="dotted"];

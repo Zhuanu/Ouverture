@@ -19,8 +19,10 @@ struct
   let length list = List.length !list  
 end ;;
 
+
 (*1.2*)
 let rec bit64 n accu = if n <= 0 then accu else bit64 (n-1) (accu@[false]);;
+
 
 let decomposition l = 
   let rec loop x list =
@@ -39,6 +41,7 @@ let decomposition l =
   in
   loop2 l [];;
     
+
 (*1.3*)
 let rec ajoutFalse list n accu =
   if (n <= 0)
@@ -67,6 +70,7 @@ let package list =
     | _ -> (List.rev hd)::(loop tl)
   in loop list;;
 
+
 let composition list =
   let rec loopExt l =
     match l with
@@ -86,6 +90,7 @@ let table x n =
   let binary_list = decomposition x in
   completion binary_list n;;
 
+
 (*1.6*)
 let gen_alea n =
   let rec loop acc n  = 
@@ -97,10 +102,12 @@ let gen_alea n =
   in
   loop [] n
 
+
 (*2.7*)
 type btree = 
   | Leaf of bool
   | Node of int * btree * btree
+
 
 (*2.8*)
 let diviser_liste liste =
@@ -114,6 +121,7 @@ let diviser_liste liste =
   in
   aux (List.length liste/2) [] liste
 
+
 let cons_arbre table = 
   let rec construction depth table = 
     match table with
@@ -125,6 +133,7 @@ let cons_arbre table =
   in
   construction 1 table
 
+
 (*2.9*)
 let rec liste_feuilles n = 
   match n with
@@ -133,9 +142,9 @@ let rec liste_feuilles n =
 
 
 (*3.10*)
-
 type dejaVus = int64 list * btree ref;;
 type listeDejaVus = dejaVus list;;
+
 
 let findSeen seen x =
   let rec aux seen x =
@@ -148,6 +157,7 @@ let findSeen seen x =
           else aux (ref reste) x
   in aux seen x
 
+
 let onlyFalse list =
   let rec loop list =
     match list with
@@ -155,85 +165,113 @@ let onlyFalse list =
     | hd::tl -> if hd then false else loop tl
   in loop list
 
-(* let regleM tree seen liste =
+
+let regleM tree seen liste =
   let n = composition liste in
   let node = findSeen seen n in
-  (match node with
-    | None -> seen := (n, tree)::!seen
-    | Some node -> tree := !node);; *)
-    let regleM tree seen liste =
-      let n = composition liste in
-      let node = findSeen seen n in
-      (match node with
-        | None -> print_string "None\n" ; seen := (n, tree)::!seen
-        | Some node -> print_string "Some\n");;
+  match node with
+    | None -> seen := (n, ref tree)::!seen; tree
+    | Some node -> !node
 
-(* version Unit *)
-let compressionParListe tree listseen = 
+
+let compressionParListe tree listseen =
   let rec loop tree listseen =
-    match !tree with
+    match tree with
     | Leaf b -> regleM tree listseen [b]
     | Node (depth, left, right) ->
-      let gauche = (ref left) in
-      let droite = (ref right) in
-      let liste = liste_feuilles (!tree) in
+      let liste = liste_feuilles tree in
       let liste_droite = liste_feuilles right in
-      if (onlyFalse (liste_droite)) (* Règle Z *)
-      then (
-        loop gauche listseen;
-        tree := !gauche;
+      if (onlyFalse (liste_droite))
+      then ( (* Règle Z *)
+        loop left listseen;
       )
       else (
-        loop gauche listseen;
-        loop droite listseen;
-        regleM tree listseen liste;
+        let newTree = Node (depth, loop left listseen, loop right listseen) in
+        regleM newTree listseen liste
       );
-      Printf.printf "Taille de seen %d\n" (List.length !listseen);
   in loop tree listseen;;
 
-let nodeGraph arbre buffer = 
+
+let nodeGraph arbre buffer =
+  let id_map = Hashtbl.create 256 in
   let cpt = ref 0 in
-  let rec loop node cpt buffer = 
-    match !node with
-    | Leaf b -> 
-      buffer := !buffer ^ (Printf.sprintf "%d [label=\"%s\"];\n" !cpt (if b then "True" else "False"))
-    | Node (prof, gauche, droite) -> 
-      buffer := !buffer ^ (Printf.sprintf "%d [label=\"%d\"];\n" !cpt prof);
-      cpt := !cpt + 1;
-      loop (ref gauche) cpt buffer;
-      cpt := !cpt + 1;
-      loop (ref droite) cpt buffer;
+  let rec loop node cpt buffer =
+    match node with
+    | Leaf b ->
+      begin
+        try
+          let _ = Hashtbl.find id_map node in ()
+        with Not_found -> 
+          Hashtbl.add id_map node !cpt;
+          buffer := !buffer ^ (Printf.sprintf "%d [label=\"%s\"];\n" !cpt (if b then "True" else "False"))
+      end
+    | Node (prof, gauche, droite) ->
+      begin
+        try
+          let _ = Hashtbl.find id_map node in ()
+        with Not_found ->
+          Hashtbl.add id_map node !cpt;
+          buffer := !buffer ^ (Printf.sprintf "%d [label=\"%d\"];\n" !cpt prof);
+      end;
+      begin
+        try
+          let _ = Hashtbl.find id_map gauche in ()
+        with Not_found ->
+          cpt := !cpt + 1;
+          loop gauche cpt buffer;
+      end;
+      begin
+        try
+          let _ = Hashtbl.find id_map droite in ()
+        with Not_found ->
+          cpt := !cpt + 1;
+          loop droite cpt buffer;
+      end;
   in loop arbre cpt buffer;;
 
 
 let edgeGraph arbre buffer =
+  let id_map = Hashtbl.create 256 in
   let cpt = ref 0 in
   let rec loop node cpt buffer =
-    let id = !cpt in
-    match !node with
+    match node with
     | Leaf b -> ()
-    | Node (prof, gauche, droite) -> 
-      cpt := !cpt + 1;
-      buffer := !buffer ^ (Printf.sprintf "%d -> %d [style=\"dotted\"];\n" id !cpt);
-      loop (ref gauche) cpt buffer;
-      cpt := !cpt + 1;
-      buffer := !buffer ^ (Printf.sprintf "%d -> %d;\n" id !cpt);
-      loop (ref droite) cpt buffer;
+    | Node (prof, gauche, droite) ->
+      let id = !cpt in
+      begin
+        try
+          let id_gauche = Hashtbl.find id_map gauche in 
+          buffer := !buffer ^ (Printf.sprintf "%d -> %d [style=\"dotted\"];\n" id id_gauche);
+        with Not_found ->
+          cpt := !cpt + 1;
+          Hashtbl.add id_map gauche !cpt;
+          buffer := !buffer ^ (Printf.sprintf "%d -> %d [style=\"dotted\"];\n" id !cpt);
+          loop gauche cpt buffer;
+      end;
+      begin
+        try
+          let id_droite = Hashtbl.find id_map droite in
+          buffer := !buffer ^ (Printf.sprintf "%d -> %d;\n" id id_droite);
+        with Not_found ->
+          cpt := !cpt + 1;
+          Hashtbl.add id_map droite !cpt;
+          buffer := !buffer ^ (Printf.sprintf "%d -> %d;\n" id !cpt);
+          loop droite cpt buffer;
+      end;
   in loop arbre cpt buffer;;
 
 
 let graph l n =
   let buffer = ref "digraph ArbreDecision {\n" in
   let (table, _) = (table l n) in
-  let arbre = ref (cons_arbre table) in
+  let arbre = cons_arbre table in
   let seen = ref [] in
-  compressionParListe arbre seen;
-  nodeGraph arbre buffer;
-  edgeGraph arbre buffer;
+  let arbre_comp = compressionParListe arbre seen in 
+  nodeGraph arbre_comp buffer;
+  edgeGraph arbre_comp buffer;
   buffer := !buffer ^ "}";
-  (* print_string !buffer;; *)
-  let dot_file = open_out "arbre_decision.dot" in
+  let dot_file = open_out "Figure 2.dot" in
   Printf.fprintf dot_file "%s" !buffer;
   close_out dot_file;;
 
-let () = graph [8L] 4;;
+let () = graph [25899L] 16;;
