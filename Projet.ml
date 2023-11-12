@@ -6,7 +6,7 @@ struct
   type 'a t  = 'a list ref
       
   let create() = ref []
-      
+  
   let insertHead x list = list:= [x] @ !list
                                        
   let insertTail x list = list:= !list @ [x]
@@ -294,14 +294,6 @@ type arbreDejaVus =
 | Leaf_
 | Node_ of btree option * (arbreDejaVus ref) * (arbreDejaVus ref) (* pointeur vers noeud du graphe, false : arbreG, true : arbreD *)
 
-(* let extendLeaf node bits =
-  let rec loop node bits =
-    match bits with 
-    | [] -> Node (Some node, ref Leaf, ref Leaf)
-    | true::xs -> Node (None, ref Leaf, loop node xs)
-    | false::xs -> Node (None, loop node xs, ref Leaf)
-  in loop node bits;; *)
-
 
 let insertionArbre arbre bits node =
   let rec loop arbre bits =
@@ -328,8 +320,11 @@ let findSeenArbre seenArbre bits =
 let regleM_Arbre tree seenArbre liste =
   let node = findSeenArbre seenArbre liste in
   match node with
-    | None -> seenArbre := !(insertionArbre seenArbre liste tree); Some tree
-    | Some a -> a
+    | None -> seenArbre := !(insertionArbre seenArbre liste tree); tree
+    | Some pointeur ->
+      match pointeur with
+      | None -> failwith "Erreur"
+      | Some node -> node
 
 
 let compressionParArbre tree seenArbre =
@@ -350,38 +345,19 @@ let compressionParArbre tree seenArbre =
   in loop tree seenArbre;;
 
 
-(*4.16*)
-(*Entrée :
-   b : feuille de l'arbre ArbreDejaVus
-   bits : liste de bits*)
-(*Etend l'arbre avec la liste de bits x*)
+let graphArbre l n =
+    let (table, _) = (table l n) in
+    let arbre = cons_arbre table in
 
-    
-(* 
-let findSeen2 tree treeSeen x =
-(*Entrée :
-   treeSeen : ArbreDejaVus
-   x : liste de bits*)
-(*Parcours l'arbre treeSeen afin de déterminer si x a déjà été vu, renvoie l'arbre avec le pointeur ajouté (s'il n'y était pas déjà)*)
-let rec aux treeSeen x =
-  match treeSeen, x with
-  | Leaf b, [] -> Some b (*si liste vide et on tombe sur une feuille*)
-  | Leaf b, x1::xs ->  (*si liste non vide et on tombe sur une feuille, on étend l'arbre*)
-      extendLeaf tree b x
-  | Node (pointeur, gauche, droite), [] -> (*si liste vide, dans un noeud interne de l'arbre*)
-    if !pointeur = None
-      then (pointeur := Some (Leaf false); Some (Leaf false)) (*change le pointeur de l'arbre si pointeur vide*)
-      else Some !pointeur (*renvoie le pointeur de l'arbre si pointeur non vide*)
-  | Node (pointeur, gauche, droite), x1::xs -> 
-    if x1 = false
-      then aux !gauche xs
-      else aux !droite xs
-in
-aux treeSeen x
-
-let regleM2 tree treeSeen liste =
-let node = findSeen2 tree !treeSeen liste in
-match node with
-  | None -> tree
-  | Some node -> !node
- *)
+    (* Arbre compressé *)
+    let buffer = ref "digraph ArbreDecision {\n" in
+    let seen = ref Leaf_ in
+    let arbre_comp = compressionParArbre arbre seen in 
+    nodeGraph arbre_comp buffer;
+    edgeGraph arbre_comp buffer;
+    buffer := !buffer ^ "}";
+    let dot_file = open_out "Figure 2 Arbre.dot" in
+    Printf.fprintf dot_file "%s" !buffer;
+    close_out dot_file;;
+  
+let () = graphArbre [25899L] 16;;
