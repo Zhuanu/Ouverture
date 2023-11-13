@@ -97,10 +97,13 @@ let gen_alea n =
     if (n <= 0) then List.rev acc
     else
     if (n < 64)
-    then loop (Random.int64 (Int64.shift_left 1L n)::acc) (n-64) (* le dernier entier de n-l*64 bits *)
+    then 
+      let rand_arg = if n = 63 then Int64.max_int else Int64.shift_left 1L n in
+      loop (Random.int64 rand_arg::acc) (n-64) (* le dernier entier de n-l*64 bits *)
     else loop (Random.int64 Int64.max_int::acc) (n-64) (* l entier de 64 bits *)
   in
   loop [] n
+  
 
 
 (*2.7*)
@@ -361,3 +364,82 @@ let graphArbre l n =
     close_out dot_file;;
   
 let () = graphArbre [25899L] 16;;
+
+let nodeCount arbre =
+  let count = ref 0 in
+  let rec loop arbre =
+    match arbre with
+    | Leaf_ -> ()
+    | Node_ (pointeur, gauche, droite) -> 
+      (match pointeur with
+      | None -> ()
+      | Some _ -> count := !count + 1);
+      loop !gauche; loop !droite
+  in loop arbre;
+  !count;;
+
+let treeHeight arbre =
+  let h = ref 0 in
+  let rec loop arbre =
+    match arbre with
+    | Leaf b -> ()
+    | Node (_, gauche, droite) -> 
+      h := !h + 1;
+      loop gauche;
+  in loop arbre; 
+  !h;;
+
+
+let experimentalCurvesTree n nbBits =
+  let (table, _) = (table n nbBits) in
+  let seenArbre = ref Leaf_ in
+  let arbre = cons_arbre table in
+  let t = Sys.time () in
+  let arbre_comp = compressionParArbre arbre seenArbre in
+  (* 2^(h+1) - 1 est le nombre de noeud avant compression *)
+  let h = treeHeight arbre in
+  let nb_nodes = (int_of_float (2.0 ** ((float_of_int h) +. 1.))) - 1 in
+  let nb_nodes_comp = nodeCount !seenArbre in
+  let rapport = (float_of_int nb_nodes_comp) /. (float_of_int nb_nodes) in
+  ((1. -. rapport) *. 100., Sys.time() -. t);;
+
+
+let experimentalCurvesList n nbBits =
+  let (table, _) = (table n nbBits) in
+  let listseen = ref [] in
+  let arbre = cons_arbre table in
+  let t = Sys.time () in
+  let arbre_comp = compressionParListe arbre listseen in
+  (* 2^(h+1) - 1 est le nombre de noeud avant compression *)
+  let h = treeHeight arbre in
+  let nb_nodes = (int_of_float (2.0 ** ((float_of_int h) +. 1.))) - 1 in
+  let nb_nodes_comp = List.length !listseen in
+  let rapport = (float_of_int nb_nodes_comp) /. (float_of_int nb_nodes) in
+  ((1. -. rapport) *. 100., Sys.time() -. t);;
+
+
+
+  let () = 
+  let buffer = ref "" in
+  let buffer2 = ref "" in
+  let nbFeuilles = ref 1 in
+  let nbIterations = 1040 in
+  let rec loop nbBits =
+    if nbBits = nbIterations then ()
+    else
+      let int64n = (gen_alea nbBits) in
+      Printf.printf "%d\n" nbBits;
+      (* let n = Int64.to_int (List.hd int64n) in *)
+      if nbBits > !nbFeuilles then nbFeuilles := !nbFeuilles * 2;
+      let (taux, temps) = (experimentalCurvesTree int64n !nbFeuilles) in
+      let (taux2, temps2) = (experimentalCurvesList int64n !nbFeuilles) in
+      buffer := !buffer ^ (Printf.sprintf "%d %f %f\n" nbBits taux temps);
+      buffer2 := !buffer ^ (Printf.sprintf "%d %f %f\n" nbBits taux2 temps2);
+      loop (nbBits+1)
+  in loop 1;
+  let csv_file = open_out "compressionArbre.txt" in
+  Printf.fprintf csv_file "%s" !buffer;
+  close_out csv_file;
+  let csv_file2 = open_out "compressionListe.txt" in
+  Printf.fprintf csv_file2 "%s" !buffer2;
+  close_out csv_file2;; 
