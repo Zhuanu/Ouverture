@@ -418,8 +418,7 @@ let experimentalCurvesList n nbBits =
   ((1. -. rapport) *. 100., Sys.time() -. t);;
 
 
-
-  let () = 
+let () = 
   let buffer = ref "" in
   let buffer2 = ref "" in
   let nbFeuilles = ref 1 in
@@ -428,7 +427,6 @@ let experimentalCurvesList n nbBits =
     if nbBits = nbIterations then ()
     else
       let int64n = (gen_alea nbBits) in
-      Printf.printf "%d\n" nbBits;
       (* let n = Int64.to_int (List.hd int64n) in *)
       if nbBits > !nbFeuilles then nbFeuilles := !nbFeuilles * 2;
       let (taux, temps) = (experimentalCurvesTree int64n !nbFeuilles) in
@@ -443,3 +441,69 @@ let experimentalCurvesList n nbBits =
   let csv_file2 = open_out "compressionListe.txt" in
   Printf.fprintf csv_file2 "%s" !buffer2;
   close_out csv_file2;; 
+
+
+let nb_Feuilles n = 
+  let rec loop n accu =
+    if accu > n then accu
+    else loop n (accu * 2)
+  in loop n 1;;
+
+
+type listeOcc = (int * int ref) list ref;;
+
+
+let rechercheListe list x =
+  let rec aux reste x =
+    match !reste with
+    | [] -> list := (x, ref 1)::!list
+    | (tailleZDD, occ)::reste -> 
+      if (tailleZDD = x) then occ := !occ + 1
+      else aux (ref reste) x
+  in aux list x;;
+
+
+let distributionOcc n nbIterations occTaille =
+  let rec loop nbIterations =
+    if nbIterations = 0 then ()
+    else 
+      let bits = gen_alea n in
+      let nbFeuilles = nb_Feuilles n in
+      let (table, _) = (table bits nbFeuilles) in
+      let arbre = cons_arbre table in
+      let seenArbre = ref Leaf_ in
+      let arbre_comp = compressionParArbre arbre seenArbre in
+      let tailleZDD = nodeCount !seenArbre in
+      rechercheListe occTaille tailleZDD;
+      loop (nbIterations-1);
+  in loop nbIterations;;
+
+
+let distributionProba occTaille nbIterations probaTaille =
+  let rec loop occTaille =
+    match !occTaille with
+    | [] -> ()
+    | (tailleZDD, occ)::reste -> 
+      probaTaille := (tailleZDD, (float_of_int !occ) /. (float_of_int nbIterations))::!probaTaille;
+      loop (ref reste)
+  in loop occTaille;;
+
+  
+let () = 
+  let buffer = ref "" in
+  let nbIterations = 3000 in
+  let n = 600 in
+  let occTaille = ref [] in
+  let probaTaille = ref [] in
+  distributionOcc n nbIterations occTaille;
+  distributionProba occTaille nbIterations probaTaille;
+  let rec loop probaTaille =
+    match !probaTaille with
+    | [] -> ()
+    | (tailleZDD, proba)::reste -> 
+      buffer := !buffer ^ (Printf.sprintf "%d %f\n" tailleZDD proba);
+      loop (ref reste)
+  in loop probaTaille;
+  let csv_file = open_out "distributionProba.txt" in
+  Printf.fprintf csv_file "%s" !buffer;
+  close_out csv_file;; 
